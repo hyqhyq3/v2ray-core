@@ -252,18 +252,24 @@ func (this *Server) handlePlainHTTP(request *http.Request, dest v2net.Destinatio
 	go func() {
 		defer finish.Done()
 		responseReader := bufio.NewReader(v2io.NewChanReader(ray.InboundOutput()))
-		response, err := http.ReadResponse(responseReader, request)
-		if err != nil {
-			log.Warning("HTTP: Failed to read response: ", err)
-			return
+		responseWriter := bufio.NewWriter(writer)
+		p := make([]byte, 4096)
+		for {
+			n, err := responseReader.Read(p)
+			if err == io.EOF {
+				return
+			}
+			if err != nil {
+				log.Warning("HTTP: Failed to read response: ", err)
+				return
+			}
+			_, err = responseWriter.Write(p[:n])
+			if err != nil {
+				log.Warning("HTTP: Failed to write response: ", err)
+				return
+			}
+			responseWriter.Flush()
 		}
-		responseWriter := v2io.NewBufferedWriter(writer)
-		err = response.Write(responseWriter)
-		if err != nil {
-			log.Warning("HTTP: Failed to write response: ", err)
-			return
-		}
-		responseWriter.Flush()
 	}()
 	finish.Wait()
 }
