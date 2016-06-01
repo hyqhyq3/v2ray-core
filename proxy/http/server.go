@@ -232,7 +232,6 @@ func (this *Server) handlePlainHTTP(request *http.Request, dest v2net.Destinatio
 	StripHopByHopHeaders(request)
 
 	ray := this.packetDispatcher.DispatchToOutbound(dest)
-	defer ray.InboundInput().Close()
 	defer ray.InboundOutput().Release()
 
 	var finish sync.WaitGroup
@@ -246,6 +245,7 @@ func (this *Server) handlePlainHTTP(request *http.Request, dest v2net.Destinatio
 			return
 		}
 		requestWriter.Flush()
+		ray.InboundInput().Close()
 	}()
 
 	finish.Add(1)
